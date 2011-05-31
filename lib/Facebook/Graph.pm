@@ -249,6 +249,22 @@ sub rsvp_declined {
     return Facebook::Graph::Publish::RSVPDeclined->new( %params );
 }
 
+sub delete_id {
+  my ($self, $object_id) = @_;
+  my %params;
+  $params{method} = 'DELETE';
+  if ($self->has_access_token) {
+    $params{access_token} = $self->access_token;
+  }
+  if ($self->has_secret) {
+    $params{secret} = $self->secret;
+  }
+  if ($object_id) {
+    $params{object_name} = $object_id;
+  }
+  return Facebook::Graph::Query->new(%params)->request->as_hashref;
+}
+
 
 
 no Any::Moose;
