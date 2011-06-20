@@ -77,6 +77,9 @@ has since => (
     predicate   => 'has_since',
 );
 
+has ua => (
+    is => 'rw',
+);
 
 sub limit_results {
     my ($self, $limit) = @_;
@@ -187,16 +190,18 @@ sub uri_as_string {
 sub request {
     my ($self, $uri) = @_;
     $uri ||= $self->uri_as_string;
+
     my $response;
     if (uc($self->method) eq 'GET') {
-      $response = LWP::UserAgent->new->get($uri);
+      $response = ($self->ua || LWP::UserAgent->new)->get($uri);
     } else {
       my $request = HTTP::Request->new(uc($self->method), $uri);
       # workaround for http://stackoverflow.com/questions/4933780/why-am-i-getting-a-method-not-implemented-error-when-attempting-to-delete-a-fac/4947836#4947836
       $request->header('Content-Length' => 0);
 
-      $response = LWP::UserAgent->new->request($request);
+      $response = ($self->ua || LWP::UserAgent->new)->request($request);
     }
+
     my %params = (response => $response);
     if ($self->has_secret) {
         $params{secret} = $self->secret;
