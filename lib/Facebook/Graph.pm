@@ -5,6 +5,7 @@ use MIME::Base64::URLSafe;
 use JSON;
 use Facebook::Graph::AccessToken;
 use Facebook::Graph::Authorize;
+use Facebook::Graph::Batch;
 use Facebook::Graph::Query;
 use Facebook::Graph::Picture;
 use Facebook::Graph::Publish::Post;
@@ -113,6 +114,18 @@ sub query {
         $params{secret} = $self->secret;
     }
     return Facebook::Graph::Query->new(%params);
+}
+
+sub batch {
+    my ($self) = @_;
+    my %params = ( ua => $self->ua );
+    if ($self->has_access_token) {
+        $params{access_token} = $self->access_token;
+    }
+    if ($self->has_secret) {
+        $params{secret} = $self->secret;
+    }
+    return Facebook::Graph::Batch->new(%params);
 }
 
 sub picture {
@@ -264,17 +277,17 @@ sub rsvp_declined {
 }
 
 sub delete_id {
-  my ($self, $object_id) = @_;
-  my %params;
+  my ($self, $object_name) = @_;
+  my %params = (
+      object_name => $object_name,
+      ua          => $self->ua,
+  );
   $params{method} = 'DELETE';
   if ($self->has_access_token) {
     $params{access_token} = $self->access_token;
   }
   if ($self->has_secret) {
     $params{secret} = $self->secret;
-  }
-  if ($object_id) {
-    $params{object_name} = $object_id;
   }
   return Facebook::Graph::Query->new(%params)->request->as_hashref;
 }

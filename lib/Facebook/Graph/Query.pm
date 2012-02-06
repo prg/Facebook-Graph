@@ -77,6 +77,10 @@ has since => (
     predicate   => 'has_since',
 );
 
+has _query => (
+    is => 'rw',
+);
+
 has ua => (
     is => 'rw',
 );
@@ -148,9 +152,10 @@ sub where_since {
     return $self;
 }
 
-sub uri_as_string {
+sub _build_query {
     my ($self) = @_;
     my %query;
+
     if ($self->has_access_token) {
         $query{access_token} = uri_decode($self->access_token);
     }
@@ -181,9 +186,28 @@ sub uri_as_string {
     if ($self->has_ids) {
         $query{ids} = join(',', @{$self->ids});
     }
+    $self->_query(\%query);
+
+    return $self;
+}
+
+sub relative_uri_as_string {
+    my ($self) = @_;
+
+    $self->_build_query;
     my $uri = $self->uri;
     $uri->path($self->object_name);
-    $uri->query_form(%query);
+    $uri->query_form(%{ $self->_query });
+    return $uri->rel('https://graph.facebook.com');
+}
+
+sub uri_as_string {
+    my ($self) = @_;
+
+    $self->_build_query;
+    my $uri = $self->uri;
+    $uri->path($self->object_name);
+    $uri->query_form(%{ $self->_query });
     return $uri->as_string;
 }
 
@@ -197,7 +221,7 @@ sub request {
     } else {
       my $request = HTTP::Request->new(uc($self->method), $uri);
       # workaround for http://stackoverflow.com/questions/4933780/why-am-i-getting-a-method-not-implemented-error-when-attempting-to-delete-a-fac/4947836#4947836
-      $request->header('Content-Length' => 0);
+      $request->header('Content-Length' => 0) if uc($self->method) eq 'DELETE';
 
       $response = ($self->ua || LWP::UserAgent->new)->request($request);
     }
