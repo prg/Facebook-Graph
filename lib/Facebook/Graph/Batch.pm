@@ -6,6 +6,7 @@ with 'Facebook::Graph::Role::Uri';
 use LWP::UserAgent;
 use URI::Encode qw(uri_decode);
 use JSON;
+use Ouch;
 
 has secret => (
     is => 'ro',
@@ -18,54 +19,56 @@ has access_token => (
     predicate => 'has_access_token',
 );
 
-has queries => (
-    is => 'rw',
-    isa => 'ArrayRef[Facebook::Graph::Query]',
-);
-
-has _batch => (
-    is => 'rw',
-);
-
 has ua => (
     is => 'rw',
 );
 
-sub build_batch {
-    my ($self) = @_;
-    my @batch;
+sub _build_batch {
+    my ($self, $queries) = @_;
+    my $batch;
 
-    foreach (@{ $self->queries }) {
-        push @batch, { method => $_->method, relative_url => $_->relative_uri_as_string };
+    foreach (@{ $queries }) {
         if ($_->has_access_token) {
             $self->access_token($_->access_token);
         }
+        push @$batch, { method => $_->method, relative_url => $_->relative_uri_as_string };
     }
-    $self->_batch(\@batch);
 
-    return $self;
+    return JSON->new->encode($batch);
 }
 
 sub request {
-    my ($self) = @_;
-    my (@params, @response);
+    my ($self, $queries) = @_;
+    my (%params, @response);
     my $uri = $self->uri;
 
-    $self->build_batch;
+    my $batch = $self->_build_batch($queries);
 
-    #push @params, { access_token => uri_decode($self->access_token) };
-    push @params, { batch => $self->_batch };
-
-    my $response = ($self->ua || LWP::UserAgent->new)->post($uri, \@params);
-
-    foreach (@{ JSON->new->decode($response->content) }) {
-        push @response,
-            Facebook::Graph::Response->new(
-                response => HTTP::Response->new($_->{code}, undef, $_->{headers}, $_->{body})
-            );
+    if ($self->has_access_token) {
+        $params{access_token} = uri_decode($self->access_token);
     }
+    $params{batch} = $batch;
 
-    return \@response;
+    my $response = ($self->ua || LWP::UserAgent->new)->post($uri, \%params);
+
+    if ($response->is_success) {
+        foreach (@{ JSON->new->decode($response->content) }) {
+            push @response,
+                Facebook::Graph::Response->new(
+                    response => HTTP::Response->new($_->{code}, undef, $_->{headers}, $_->{body})
+                );
+        }
+
+        return \@response;
+    } else {
+        my $message = $response->message;
+        my $error = eval { JSON->new->decode($response->content) };
+        unless ($@) {
+            $message = $error->{error}{type} . ' - ' . $error->{error}{message};
+        }
+        ouch $response->code, 'Could not execute request ('.$response->request->uri->as_string.'): '.$message,
+            $response->request->uri->as_string;
+    }
 }
 
 no Any::Moose;

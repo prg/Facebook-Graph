@@ -198,7 +198,7 @@ sub relative_uri_as_string {
     my $uri = $self->uri;
     $uri->path($self->object_name);
     $uri->query_form(%{ $self->_query });
-    return $uri->rel('https://graph.facebook.com');
+    return $uri->rel('https://graph.facebook.com')->as_string;
 }
 
 sub uri_as_string {
