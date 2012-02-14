@@ -17,12 +17,17 @@ has secret => (
 
 has postback => (
     is      => 'ro',
-    required=> 1,
+    predicate => 'has_postback',
 );
 
 has code => (
     is      => 'ro',
-    required=> 1,
+    predicate => 'has_code',
+);
+
+has grant_type => (
+    is => 'ro',
+    predicate => 'has_grant_type',
 );
 
 has ua => (
@@ -37,8 +42,20 @@ sub uri_as_string {
         client_id       => $self->app_id,
         client_secret   => $self->secret,
         redirect_uri    => $self->postback,
-        code            => $self->code,
     );
+
+    if ($self->has_postback) {
+        $uri->query_form({ $uri->query_form, redirect_uri => $self->postback });
+    }
+
+    if ($self->has_code) {
+        $uri->query_form({ $uri->query_form, code => $self->code });
+    }
+
+    if ($self->has_grant_type) {
+        $uri->query_form({ $uri->query_form, grant_type => $self->grant_type });
+    }
+
     return $uri->as_string;
 }
 

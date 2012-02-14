@@ -79,6 +79,17 @@ sub request_access_token {
     return $token;
 }
 
+sub request_app_token {
+    my ($self) = @_;
+    my $token = Facebook::Graph::AccessToken->new(
+        secret => $self->secret,
+        app_id => $self->app_id,
+        grant_type => 'client_credentials',
+        ua => $self->ua,
+    )->request;
+    return $token;
+}
+
 sub convert_sessions {
     my ($self, $sessions) = @_;
     return Facebook::Graph::Session->new(
@@ -91,7 +102,7 @@ sub convert_sessions {
         ->as_hashref;
 }
 
-sub authorize { 
+sub authorize {
     my ($self) = @_;
     return Facebook::Graph::Authorize->new(
         app_id          => $self->app_id,
@@ -118,13 +129,8 @@ sub query {
 
 sub batch {
     my ($self) = @_;
-    my %params = ( ua => $self->ua );
-    if ($self->has_access_token) {
-        $params{access_token} = $self->access_token;
-    }
-    if ($self->has_secret) {
-        $params{secret} = $self->secret;
-    }
+    my %params = ( ua => $self->ua, access_token => $self->request_app_token );
+
     return Facebook::Graph::Batch->new(%params);
 }
 
