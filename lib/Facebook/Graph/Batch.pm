@@ -4,15 +4,9 @@ use Any::Moose;
 use Facebook::Graph::Response;
 with 'Facebook::Graph::Role::Uri';
 use LWP::UserAgent;
-use URI::Encode qw(uri_decode);
+use URI::Encode qw(uri_decode uri_encode);
 use JSON;
 use Ouch;
-
-has secret => (
-    is => 'ro',
-    required => 0,
-    predicate => 'has_secret',
-);
 
 has access_token => (
     is => 'rw',
@@ -26,12 +20,19 @@ has ua => (
 sub _build_batch {
     my ($self, $queries) = @_;
     my $batch;
+    my $api_limit = 50; # max limit by Facebook
 
     foreach (@{ $queries }) {
-        if ($_->has_access_token) {
-            $self->access_token($_->access_token);
+        if ($api_limit > 0) {
+            my $relative_url = $_->relative_uri_as_string;
+            # if ($_->has_access_token) {
+            #     # request specific access tokens have to be passed in the url,
+            #     # see https://developers.facebook.com/bugs/212455918831996
+            # }
+            push @$batch, { method => $_->method, relative_url => $relative_url };
+
+            $api_limit--;
         }
-        push @$batch, { method => $_->method, relative_url => $_->relative_uri_as_string };
     }
 
     return JSON->new->encode($batch);
@@ -47,6 +48,7 @@ sub request {
     if ($self->has_access_token) {
         $params{access_token} = uri_decode($self->access_token);
     }
+
     $params{batch} = $batch;
 
     my $response = ($self->ua || LWP::UserAgent->new)->post($uri, \%params);
