@@ -25,12 +25,7 @@ sub _build_batch {
     foreach (@{ $queries }) {
         if ($api_limit > 0) {
             my $relative_url = $_->relative_uri_as_string;
-            # if ($_->has_access_token) {
-            #     # request specific access tokens have to be passed in the url,
-            #     # see https://developers.facebook.com/bugs/212455918831996
-            # }
             push @$batch, { method => $_->method, relative_url => $relative_url };
-
             $api_limit--;
         }
     }

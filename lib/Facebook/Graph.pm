@@ -87,7 +87,7 @@ sub request_app_token {
         grant_type => 'client_credentials',
         ua => $self->ua,
     )->request;
-    return $token;
+    return $token->token;
 }
 
 sub convert_sessions {
